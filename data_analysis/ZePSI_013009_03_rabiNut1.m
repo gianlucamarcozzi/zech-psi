@@ -87,7 +87,8 @@ end
 % ----------------------------------------------------------------------------
 FREQ_PI_PULSE = 43.4;  % MHz, taken from the rabiNut2.m data analysis file
 % ----------------------------------------------------------------------------
-nexttile
+figure()
+clf
 for ii = 1:nMeas
     freq(ii) = pfit{ii}(2);
 end

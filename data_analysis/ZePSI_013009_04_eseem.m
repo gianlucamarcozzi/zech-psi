@@ -9,12 +9,12 @@ load(loadPath)
 %% ESEEM INTEGRATION
 
 % Find and plot integration window
-integWidth = 130;
-iMax = 213;
+integWidth = 50;
+iMax = 180;
 
 nMeas = numel(y);
 nTau = 200;
-figure()
+% figure()
 clf
 tiledlayout("flow", "TileSpacing", "compact", "Padding", "compact")
 % for ii = nMeas - 3:nMeas
@@ -60,14 +60,14 @@ for ii = 1:nMeas
     title(Param{ii}.turningAngle/pi*180)
 end
 
-I_MIN = 58;
+I_MIN = 45;
 figure(23)
 clf
 cmap = viridis(nMeas);
 for ii = 1:nMeas
-    if ii > 11 && ii < 17
-        disp('Skipping some spectra')
-    elseif ii == 13 || ii == 14
+    % if ii > 11 && ii < 17
+        % disp('Skipping some spectra')
+    if ii == 13 || ii == 14
         plot(xeseem, imag(eseem(ii, :)), 'x', 'Color', cmap(ii, :), ...
             'DisplayName', string(Param{ii}.turningAngle/pi*180))
     else
@@ -85,7 +85,7 @@ for ii = 1:nMeas
     ybeta(ii) = imag(eseem(ii, I_MIN));
     xbeta(ii) = Param{ii}.turningAngle;
 end
-figure()
+figure(24)
 plot(xbeta*180/pi, ybeta, 'o-')
 
 %% PLOTS
