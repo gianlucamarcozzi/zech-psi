@@ -1,0 +1,166 @@
+%
+clearvars
+% addpath(genpath('../util'))
+
+% Import
+expName = "../data/raw/ZePSI-E-011";
+% N_SCAN = 5;  % Number of scans to average
+
+measNo = 1:11;
+nMeas = numel(measNo);
+
+for ii = 1:nMeas
+    measFolderName = expName + sprintf("%03d", measNo(ii));
+    measFolder = dir(measFolderName + "/*.DTA");
+    nScan_ = numel(measFolder);
+
+    % iTimeCorr = 50:
+    iTimeCorr = 40;
+    [x0{ii}, y0{ii}, Param{ii}] = ...
+        averagetreprscanselexsys(measFolder, nScan_, 9.6e9, iTimeCorr);
+    x0{ii}{2} = x0{ii}{2}/10;
+end
+
+%% Interpolation (everything is already freq corrected and t shifted)
+
+% Interpolate wrt the first field-axis
+x = x0{1};
+for ii = 1:nMeas
+    yCorr0{ii} = interp2(x0{ii}{2}, x0{ii}{1}, y0{ii}, x{2}, x{1});
+end
+
+% Correct field-axis for different length of the frequency-shifted axis
+for ii = 1:nMeas
+    minFields(ii) = min(x0{ii}{2});
+    maxFields(ii) = max(x0{ii}{2});
+end
+lowField = max(minFields);
+highField = min(maxFields);
+[~, iLowField] = min(abs(x{2} - lowField));
+[~, iHighField] = min(abs(x{2} - highField));
+
+x{2} = x{2}(iLowField:iHighField);
+for ii = 1:nMeas
+    yCorr{ii} = yCorr0{ii}(:, iLowField:iHighField);
+end
+
+
+% Take out time traces that have NaN values due to interpolation outside
+% of the recorded x-axis
+[nt, nB] = size(yCorr{1});
+
+iNotNan = true(1, nB);
+for ii = 1:nMeas
+    iNotNan_ = sum(isnan(yCorr{ii})) == 0;
+    iNotNan = iNotNan & iNotNan_;
+end
+
+x{2} = x{2}(iNotNan);
+for ii = 1:nMeas
+    yCorr{ii} = yCorr{ii}(:, iNotNan);
+end
+
+%% Scrollable field
+
+ii = 2;
+figure(3)
+clf
+h = ScrollableAxes();
+plot(h, x0{ii}{2}, x0{ii}{1}, y0{ii});
+hold on
+plot(h, x{2}, x{1}, yCorr{ii});
+
+%% Scrollable trace
+
+ii = 3;
+clf
+h = ScrollableAxes();
+plot(h, x0{ii}{1}, x0{ii}{2}, y0{ii});
+hold on
+plot(h, x{1}, x{2}, yCorr{ii});
+
+%%
+
+[nt, nB] = size(yCorr{1});
+
+for ii = 1:nMeas
+    for iB = 1:nB
+        yCorrS{ii}(:, iB) = datasmooth(yCorr{ii}(:, iB), 30, 'savgol');
+    end
+end
+
+% Scrollable traces
+clf
+tiledlayout('flow', 'TileSpacing', 'compact', 'Padding', 'compact')
+for ii = 1:nMeas
+    nexttile
+    h = ScrollableAxes();
+    % ii = 8;
+    plot(h, x{1}, x{2}, yCorr{ii});
+    hold on
+    plot(h, x{1}, x{2}, yCorrS{ii});
+end
+
+%% Baseline correction 2d
+
+timeOpt = struct('polyOrder', 0, 'range', [-1000, 0]);
+fieldOpt = struct('polyOrder', 1, 'width', 0.1);
+Opt2d = {timeOpt, fieldOpt};
+
+for ii = 1:nMeas
+    [y2{ii}, y1{ii}, bl{ii}] = ...
+        subtractbaseline2d(x, yCorrS{ii}, Opt2d);
+end
+
+%%
+
+iPlot1 = 1;
+clf
+tiledlayout(2, 1, "TileSpacing", "compact", "Padding", "compact")
+nexttile
+h = ScrollableAxes();
+plot(h, x{1}, x{2}, yCorrS{iPlot1});
+hold on
+plot(h, x{1}, x{2}, bl{iPlot1}{1});
+xline(timeOpt.range(2))
+
+nexttile
+h = ScrollableAxes();
+plot(h, x{2}, x{1}, y1{iPlot1});
+hold on
+plot(h, x{2}, x{1}, bl{iPlot1}{2});
+blRegionWidth = fieldOpt.width*(max(x{2}) - min(x{2}));
+xline(min(x{2}) + blRegionWidth)
+xline(max(x{2}) - blRegionWidth)
+
+%%
+
+iPlot1 = 1;
+iPlot2 = 3;
+clf
+h = ScrollableAxes();
+plot(h, x{2}, x{1}, y2{iPlot1});
+hold on
+plot(h, x{2}, x{1}, y2{iPlot2}/10);
+
+%% No boxcar integration for now
+
+y = y2;
+% Param = Param{1};
+
+%% Save
+
+savePath = '../data/processed/ZePSI-E-011.mat';
+save(savePath, 'x', 'y', 'Param')
+
+
+
+
+
+
+
+
+
+
+
+
