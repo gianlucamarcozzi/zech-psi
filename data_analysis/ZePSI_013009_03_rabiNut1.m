@@ -15,7 +15,7 @@ integWidth = 90;
 
 nTau = size(y{1}, 1);
 nMeas = numel(y);
-figure(1)
+figure(99)
 clf
 tiledlayout("flow", "TileSpacing", "compact", "Padding", "compact")
 for ii = 1:nMeas
@@ -57,7 +57,7 @@ end
 
 rabii = rabii(:, 1:nTau);  % Recover rabii before zero filling
 expcos = @(xx, A, tau, w) A*exp(-xx/tau).*cos(2*pi*w*xx);
-fitmodel = @(p) expcos(xrabi, 1, p(1), p(2));  % A = 1
+fitmodel = @(p) expcos(xrabi', 1, p(1), p(2));  % A = 1
 
 fitOpt = optimoptions('lsqnonlin','Display','off');
 
@@ -66,7 +66,6 @@ w0 = (linspace(1, sqrt(40), nMeas)).^2*1e-3;
 for ii = 1:nMeas
     p0 = [100, w0(ii)];
     ydata = real(rabii(ii, :))/max(real(rabii(ii, :)));
-    ydata = ydata';
 
     [pfit{ii}, ~, residual, ~, ~, ~, jacobian] = lsqnonlin(...
         @(p) ydata - mldividefun(fitmodel, ydata, p), p0, [], [], fitOpt);
@@ -80,13 +79,13 @@ for ii = 1:nMeas
     plot(xrabi, yfit{ii})
     title(sprintf('%d: %.4f MHz, %.2f ns', ...
           ii, pfit{ii}(2)*1e3, 1/2/pfit{ii}(2)))
-    plotText = strsplit(Param{ii}.TITL, '-');
-    text(gca, 0.8, 0.8, plotText{end}, 'Units', 'normalized')
+    % plotText = strsplit(Param{ii}.TITL, '-');
+    % text(gca, 0.8, 0.8, plotText{end}, 'Units', 'normalized')
 end
 
-% ----------------------------------------------------------------------------
+% ------------------------------------------------------------------------
 FREQ_PI_PULSE = 43.4;  % MHz, taken from the rabiNut2.m data analysis file
-% ----------------------------------------------------------------------------
+% ------------------------------------------------------------------------
 figure()
 clf
 for ii = 1:nMeas
@@ -110,7 +109,38 @@ for ii = 1:nMeas
     turningAngle(ii) = pfit{ii}(2)*1e3*pi/FREQ_PI_PULSE;
     LoadEseem.Param{ii}.turningAngle = turningAngle(ii);
 end
-save(loadEseemPath, '-struct', 'LoadEseem')
+% save(loadEseemPath, '-struct', 'LoadEseem')
+
+%% OVERLAY SIGMOIDAL FUNCTION
+
+sigfun = @(xx, p) p(1)./(1 + p(2)*exp(-p(3)*(xx - p(4)))) + p(5);
+xx = linspace(78, 83, 1000);
+yover = sigfun(xx, [0.04, 5, 1.7, 80.25, 0.003]);
+
+clf
+errorbar(xAmp, freq, pci(:, 2, 1) - freq', ...
+    pci(:, 2, 2) - freq', 'o')
+hold on
+plot(xx, yover)
+
+ny = 25;
+ygoal = linspace(yover(1), yover(end), ny);
+ixgoal = zeros(ny, 1);
+for ii = 1:ny
+    [~, ixgoal(ii)] = min(abs(yover - ygoal(ii)));
+end
+xgoal = xx(ixgoal);
+
+plot(xgoal, yover(ixgoal), 'kx')
+
+% SAVE TO FILE
+%{
+fileID = fopen('output.txt', 'w');
+for ii = 1:numel(xgoal)
+    fprintf(fileID, '%.2f\t', xgoal(ii));
+end
+fclose(fileID);
+%}
 
 %% FFT
 

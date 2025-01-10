@@ -3,12 +3,12 @@ addpath(genpath('util/'))
 
 %% IMPORT
 
-load('../data/processed/ZePSI-E-013004-Nut2.mat')
+load('../data/processed/ZePSI-E-013012-Nut2.mat')
 
-%% RABI NUTATIONS EXPERIMENT PULSE 1 (ONLY IN-PHASE-CHANNEL FOR NOW)
+%% RABI NUTATIONS EXPERIMENT PULSE 2
 
-iMax = 214;
-integWidth = 120;
+iMax = 196;
+integWidth = 90;
 % integWidth2 = 80;
 
 nTau = size(y{1}, 1);
@@ -30,8 +30,10 @@ for ii = 1:nMeas
     plot(sax, x{1}, x{2}, real(y{ii}));
     hold on
     plot(sax, x{1}, x{2}, imag(y{ii}));
-    plot(sax, x{1}, x{2}, real(integWindow{ii})*0.9e4);
-    ylim([-3e4, 3e4])
+    plot(sax, x{1}, x{2}, real(integWindow{ii})*0.2e4);
+    ylim([-0.5e4, 0.5e4])
+    plotTitle = strsplit(Param{ii}.TITL, '-');
+    title(plotTitle{end})
 end
 
 % Integrate to get Rabi nutations
@@ -51,46 +53,19 @@ for ii = 1:nMeas
     plot(xrabi, winham.*real(rabii(ii, :)))
 end
 
-% FFT
-tStep = xrabi(2) - xrabi(1);
-fSampl = 1/tStep;
-nzf = 1024;  % Zero filling
-rabii = winham.*rabii;  % Apply window function
-if nzf ~= 0
-    fxrabi = fSampl/nzf*(-nzf/2:nzf/2 - 1);  % Freq axis
-    rabii(:, nzf) = zeros(nMeas, 1);  % Zero filling
-    frabii = zeros(nMeas, nzf);  % Initialize fft arrays
-else
-    fxrabi = fSampl/nTau*(-nTau/2:nTau/2 - 1);  % Freq axis
-    frabii = zeros(nMeas, nTau);  % Initialize fft arrays
-end
-
-for ii = 1:nMeas
-    frabii(ii, :) = fft(rabii(ii, :));
-
-    nexttile
-    plot(fxrabi, abs(fftshift(frabii(ii, :))), 'o-')
-    xlim([-0.1, 0.1])
-end
-
-% for ii = 1:nMeas
-%     fprintf("%d pi pulse length in ns:\t%.3f\t%.3f\n", ...
-%         [ii, 1/fxrabi(ifMax(ii))/2, 1/fxrabi(ifMax2(ii))/2])
-% end
-
 %% FIT cosine
 
 rabii = rabii(:, 1:nTau);  % Recover rabii before zero filling
 expcos = @(xx, A, tau, w) A*exp(-xx/tau).*cos(2*pi*w*xx);
-fitmodel = @(p) expcos(xrabi, 1, p(1), p(2));  % A = 1
+fitmodel = @(p) expcos(xrabi', 1, p(1), p(2));  % A = 1
 
 fitOpt = optimoptions('lsqnonlin','Display','off');
 
-w0 = [40, 40]*1e-3;
+clf
+w0 = 47*1e-3;
 for ii = 1:nMeas
-    p0 = [500, w0(ii)];
+    p0 = [40, w0];
     ydata = real(rabii(ii, :))/max(real(rabii(ii, :)));
-    ydata = ydata';
 
     [pfit{ii}, ~, residual, ~, ~, ~, jacobian] = lsqnonlin(...
         @(p) ydata - mldividefun(fitmodel, ydata, p), p0, [], [], fitOpt);
@@ -113,4 +88,34 @@ end
 % errorbar(1:nMeas, freq, pci(:, 2, 1) - freq', pci(:, 2, 2) - freq', 'o')
 errorbar(1:nMeas, freq, pci(:, 2, 1) - freq', ...
     pci(:, 2, 2) - freq', 'o')
+xlim([0.9, nMeas + 0.1])
+fprintf("Average Rabi frequency: %.2f\n", mean(freq*1e3))
 
+%% FFT
+%{
+APPLY_WINDOW = 1;
+tStep = xrabi(2) - xrabi(1);
+fSampl = 1/tStep;
+nzf = 1024;  % Zero filling
+if APPLY_WINDOW
+    winrabii = winham.*rabii;  % Apply window function
+else
+    winrabii = rabii;
+end
+if nzf ~= 0
+    fxrabi = fSampl/nzf*(-nzf/2:nzf/2 - 1);  % Freq axis
+    frabii = zeros(nMeas, nzf);  % Initialize fft arrays
+    winrabii(:, nzf) = zeros(nMeas, 1);  % Zero filling
+else
+    fxrabi = fSampl/nTau*(-nTau/2:nTau/2 - 1);  % Freq axis
+    frabii = zeros(nMeas, nTau);  % Initialize fft arrays
+end
+
+for ii = 1:nMeas
+    frabii(ii, :) = fft(winrabii(ii, :));
+
+    nexttile
+    plot(fxrabi, abs(fftshift(frabii(ii, :))), 'o-')
+    xlim([-0.1, 0.1])
+end
+%}

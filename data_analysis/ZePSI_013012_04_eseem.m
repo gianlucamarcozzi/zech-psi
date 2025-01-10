@@ -3,18 +3,31 @@ addpath(genpath('util/'))
 
 %% IMPORT
 
-loadPath = '../data/processed/ZePSI-E-013009-ESEEM.mat';
+loadPath = '../data/processed/ZePSI-E-013012-ESEEM.mat';
 load(loadPath)
+
+xAmp = [78.00, 79.39, 79.79, 80.04, 80.23, 80.39, 80.53, 80.65, 80.76, ...
+    80.86, 80.96, 81.05, 81.15, 81.24, 81.34, 81.43, 81.53, 81.63, 81.74, ...
+    81.86, 82.00, 82.16, 82.35, 82.60, 83.00];
+
+bestPhase = [-0.04, -0.46, -0.80, 0.02, 0.03, 0.06, -0.02, 0.04, -0.10, ...
+    0.12, -0.02, -0.04, -0.06, -0.52, -0.07, -0.05, -0.02, -0.31, ...
+    -0.20, -0.37, -0.18, -0.28, -0.16, -0.23, -0.29, -0.27, -0.28, ...
+    -0.32, -0.36, -0.38, -0.40, -0.42, -0.43, -0.47, -0.48, -0.49, ...
+    -0.52, -0.54, -0.56, -0.55, -0.53, -0.54, -0.55, -0.56, -0.54, ...
+    -0.56, -0.56, -0.59, -0.56, -0.58, -0.56];
+bestPhase = rad2deg(bestPhase);
+xAmpPhase = 78:0.1:83;
 
 %% ESEEM INTEGRATION
 
 % Find and plot integration window
 integWidth = 50;
-iMax = 180;
+iMax = 190;
 
 nMeas = numel(y);
 nTau = 200;
-% figure()
+figure(40)
 clf
 tiledlayout("flow", "TileSpacing", "compact", "Padding", "compact")
 % for ii = nMeas - 3:nMeas
@@ -38,12 +51,34 @@ for ii = 1:nMeas
     plot(sax, x{1}, x{2}, real(integWindowPlot{ii}));
     % plot(sax, x{1}, x{2}, imag(y2{ii}));
     ylim(setaxlim([-1e4, 2e4], 1.1))
-    title(Param{ii}.turningAngle/pi*180)
+    titleStr = sprintf("%.1f deg, %.2f MPFU", ...
+        Param{ii}.turningAngle/pi*180, xAmp(ii));
+    title(titleStr)
     % xline([-1, 1]/2*integWidth + x{1}(iMax), '--')
     % fprintf("%d max at:\t%d\n", [ii, iMax])
 end
 
-% Integrate to get Eseem
+%%
+shiftphase = @(y, p) y*exp(1i*p*pi/180);
+PHASE = -45;
+
+II = 25;
+% [~, iBestPhase] = min(abs(xAmpPhase - xAmp(ii)));
+figure(41)
+clf
+sax = ScrollableAxes('Index', 1);
+% ycorr = shiftphase(y{ii}, bestPhase(iBestPhase));
+ycorr = shiftphase(y{II}, PHASE);
+plot(sax, x{1}, x{2}, real(y{II}));
+hold on
+plot(sax, x{1}, x{2}, imag(y{II}));
+plot(sax, x{1}, x{2}, real(ycorr), 'b');
+plot(sax, x{1}, x{2}, imag(ycorr), 'r');
+
+ycorr2 = integWindow{II}.*ycorr;  % Signal in the window
+
+%% INTEGRATE TO GET ESEEM
+
 eseem = zeros(nMeas, nTau);
 figure(22)
 clf
@@ -57,17 +92,34 @@ for ii = 1:nMeas
     hold on
     plot(xeseem, imag(eseem(ii, :)))
 
-    title(Param{ii}.turningAngle/pi*180)
+    titleStr = sprintf("%.1f deg, %.2f MPFU", ...
+        Param{ii}.turningAngle/pi*180, xAmp(ii));
+    title(titleStr)
 end
 
-I_MIN = 45;
+% hold on
+% plot(xeseem, real(escorr), 'r')
+% plot(xeseem, imag(escorr), 'k')
+
+eseemcorr = sum(ycorr2(1:nTau, :), 2);
+
+figure(41)
+clf
+plot(xeseem(1:2:end), real(eseem(II, 1:2:end)))
+hold on
+plot(xeseem(1:2:end), imag(eseem(II, 1:2:end)))
+plot(xeseem(1:2:end), real(eseemcorr(1:2:end)));
+plot(xeseem(1:2:end), imag(eseemcorr(1:2:end)));
+
+%%
+I_MIN = [2, 30, 55, 75, 150];
 figure(23)
 clf
 cmap = viridis(nMeas);
 for ii = 1:nMeas
     % if ii > 11 && ii < 17
         % disp('Skipping some spectra')
-    if ii == 13 || ii == 14
+    if ii == 19
         plot(xeseem, imag(eseem(ii, :)), 'x', 'Color', cmap(ii, :), ...
             'DisplayName', string(Param{ii}.turningAngle/pi*180))
     else
@@ -77,16 +129,27 @@ for ii = 1:nMeas
     hold on
 end
 xline(xeseem(I_MIN))
+yline(0)
+plot(xeseem, imag(eseemcorr), 'Color', 'r', 'DisplayName', 'Corr')
 legend()
 
 ybeta = zeros(1, nMeas);
 xbeta = zeros(1, nMeas);
 for ii = 1:nMeas
-    ybeta(ii) = imag(eseem(ii, I_MIN));
-    xbeta(ii) = Param{ii}.turningAngle;
+    for jj = 1:numel(I_MIN)
+        ybeta(ii, jj) = imag(eseem(ii, I_MIN(jj)));
+    end
+    xbeta(ii) = Param{ii}.turningAngle;    
 end
-figure(24)
-plot(xbeta*180/pi, ybeta, 'o-')
+
+figure(33)
+clf
+for ii = 1:numel(I_MIN)
+    plot(xbeta*180/pi, ybeta(:, ii), 'o-', 'DisplayName', string(I_MIN(ii)))
+    hold on
+end
+yline(0)
+legend()
 
 %% PLOTS
 %{

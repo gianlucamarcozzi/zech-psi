@@ -3,13 +3,15 @@ addpath(genpath('util/'))
 
 %% IMPORT
 
-load('../data/processed/ZePSI-E-013009-Nut2.mat')
+loadPath = '../data/processed/ZePSI-E-013009-Nut1.mat';
+load(loadPath)
 
-%% RABI NUTATIONS EXPERIMENT PULSE 2
+%% RABI NUTATIONS EXPERIMENT PULSE 1
+
+disp('Integrate echo...')
 
 iMax = 196;
 integWidth = 90;
-% integWidth2 = 80;
 
 nTau = size(y{1}, 1);
 nMeas = numel(y);
@@ -32,8 +34,6 @@ for ii = 1:nMeas
     plot(sax, x{1}, x{2}, imag(y{ii}));
     plot(sax, x{1}, x{2}, real(integWindow{ii})*0.2e4);
     ylim([-0.5e4, 0.5e4])
-    plotTitle = strsplit(Param{ii}.TITL, '-');
-    title(plotTitle{end})
 end
 
 % Integrate to get Rabi nutations
@@ -62,9 +62,9 @@ fitmodel = @(p) expcos(xrabi, 1, p(1), p(2));  % A = 1
 fitOpt = optimoptions('lsqnonlin','Display','off');
 
 clf
-w0 = 40*1e-3;
+w0 = (linspace(1, sqrt(40), nMeas)).^2*1e-3;
 for ii = 1:nMeas
-    p0 = [500, w0];
+    p0 = [100, w0(ii)];
     ydata = real(rabii(ii, :))/max(real(rabii(ii, :)));
     ydata = ydata';
 
@@ -80,21 +80,72 @@ for ii = 1:nMeas
     plot(xrabi, yfit{ii})
     title(sprintf('%d: %.4f MHz, %.2f ns', ...
           ii, pfit{ii}(2)*1e3, 1/2/pfit{ii}(2)))
+    plotText = strsplit(Param{ii}.TITL, '-');
+    text(gca, 0.8, 0.8, plotText{end}, 'Units', 'normalized')
 end
 
-nexttile
+% ------------------------------------------------------------------------
+FREQ_PI_PULSE = 43.4;  % MHz, taken from the rabiNut2.m data analysis file
+% ------------------------------------------------------------------------
+figure()
+clf
 for ii = 1:nMeas
     freq(ii) = pfit{ii}(2);
 end
-% errorbar(1:nMeas, freq, pci(:, 2, 1) - freq', pci(:, 2, 2) - freq', 'o')
-errorbar(1:nMeas, freq, pci(:, 2, 1) - freq', ...
+xAmp = [78:0.2:81, 82.4:0.2:83];
+errorbar(xAmp, freq, pci(:, 2, 1) - freq', ...
     pci(:, 2, 2) - freq', 'o')
-xlim([0.9, nMeas + 0.1])
-fprintf("Average Rabi frequency: %.2f\n", mean(freq*1e3))
+ylim(setaxlim(freq, 1.05));
+ylabel('Rabi freq / MHz')
+yyaxis right
+plot(xAmp, freq/FREQ_PI_PULSE*1e3, 'Visible', 'off')
+xlim(setaxlim(xAmp, 1.05))
+ylim(setaxlim(freq/FREQ_PI_PULSE*1e3, 1.05))
+ylabel('Fractions of pi')
+
+loadEseemPath = '../data/processed/ZePSI-E-013009-ESEEM.mat';
+LoadEseem = load(loadEseemPath);
+turningAngle = zeros(nMeas);
+for ii = 1:nMeas
+    turningAngle(ii) = pfit{ii}(2)*1e3*pi/FREQ_PI_PULSE;
+    LoadEseem.Param{ii}.turningAngle = turningAngle(ii);
+end
+% save(loadEseemPath, '-struct', 'LoadEseem')
+
+%% OVERLAY SIGMOIDAL FUNCTION
+
+sigfun = @(xx, p) p(1)./(1 + p(2)*exp(-p(3)*(xx - p(4)))) + p(5);
+xx = linspace(78, 83, 1000);
+yover = sigfun(xx, [0.04, 5, 1.7, 80.25, 0.003]);
+
+clf
+errorbar(xAmp, freq, pci(:, 2, 1) - freq', ...
+    pci(:, 2, 2) - freq', 'o')
+hold on
+plot(xx, yover)
+
+ny = 25;
+ygoal = linspace(yover(1), yover(end), ny);
+ixgoal = zeros(ny, 1);
+for ii = 1:ny
+    [~, ixgoal(ii)] = min(abs(yover - ygoal(ii)));
+end
+xgoal = xx(ixgoal);
+
+plot(xgoal, yover(ixgoal), 'kx')
+
+% SAVE TO FILE
+
+fileID = fopen('output.txt', 'w');
+for ii = 1:numel(xgoal)
+    fprintf(fileID, '%.2f\t', xgoal(ii));
+end
+fclose(fileID);
+
 
 %% FFT
 
-APPLY_WINDOW = 1;
+APPLY_WINDOW = 0;
 tStep = xrabi(2) - xrabi(1);
 fSampl = 1/tStep;
 nzf = 1024;  % Zero filling
@@ -112,6 +163,9 @@ else
     frabii = zeros(nMeas, nTau);  % Initialize fft arrays
 end
 
+figure()
+clf
+tiledlayout("flow", "TileSpacing", "compact", "Padding", "compact")
 for ii = 1:nMeas
     frabii(ii, :) = fft(winrabii(ii, :));
 
