@@ -1,4 +1,4 @@
-clearvars, clc %, close all
+clearvars, clc, close all
 
 figure()
 clf

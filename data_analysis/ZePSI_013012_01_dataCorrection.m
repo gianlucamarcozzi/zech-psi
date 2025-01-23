@@ -200,6 +200,11 @@ end
 
 %% SAVE
 
+% --------------------------CHANGE HERE!----------------------------------
+xAmp = table2array(readtable(...
+    "../data/raw/ZePSI-E-013012/ZePSI-E-013012-param.txt", "Range", "B1"));
+% ------------------------------------------------------------------------
+
 disp("Save...")
 pathToProcessed = "../data/processed/";
 
@@ -211,6 +216,7 @@ x{2} = xeseem{2}(1:end - 1);
 % Cut out the last trace that is zero everywhere
 for ii = 1:nMeas
     y{ii} = ye{ii}(1:end - 1, :);
+    Paramel0{ii}.mpfuYAmp = xAmp(ii);
 end
 Param = Paramel0;
 save(savePath, 'x', 'y', 'Param')
@@ -220,6 +226,9 @@ clear('x', 'y', 'Param')
 savePath = pathToProcessed + expName + "-Nut1.mat";
 x = xrabi;
 y = yro0;
+for ii = 1:nMeas
+    Paramro0{ii}.mpfuYAmp = xAmp(ii);
+end
 Param = Paramro0;
 save(savePath, 'x', 'y', 'Param')
 

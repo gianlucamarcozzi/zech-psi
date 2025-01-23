@@ -83,24 +83,21 @@ for ii = 1:13
     plot(ff, abs(fftshift(fp0{ii})), 'o-')
     hold on
     plot(ff, abs(fftshift(fp1{ii})), 'o-')
-    xlim(ax1(ii), setaxlim(ff, 0.05))
+    xlim(ax1(ii), 300*[-1, 1])
     
-    % ax1(ii).TickDir = 'out';
-    % ax1(ii).XAxis(2).TickLabels = [];
-    % ax1(ii).XAxis(2).TickLength = [0 0];
-    set(gca,'box','off')
+    ax.TickDir = 'out';
+    ax.XAxis.TickLabels = [];
+    ax.XAxis.TickLength = [0 0];
+    box on;
+
 end
 
 % Secondary x-axis
 for ii = 1:13
     ax2(ii) = axes('Position', ax1(ii).Position, 'XAxisLocation', 'top', ...
-        'YAxisLocation', 'right', 'Color', 'none');
-    ffb = mhz2mt(ff)*10;
+        'Color', 'none');
+    ffb = mhz2mt(ff);
     xlim(ax2(ii), setaxlim(ffb, 1))
-    yticks(ax2(ii) , [])
-    xlim(ax2(ii), setaxlim(ffb, 0.05))
-    xline([-10, 10])
-
     % line(ff2, abs(fftshift(fp0{ii})), 'Parent', ax2(ii), 'Color', 'none');
     % 
     % ax2(ii).XColor = 'r';

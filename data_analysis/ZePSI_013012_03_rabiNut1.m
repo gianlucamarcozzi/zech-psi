@@ -5,6 +5,8 @@ addpath(genpath('util/'))
 
 loadPath = '../data/processed/ZePSI-E-013012-Nut1.mat';
 load(loadPath)
+xAmp = table2array(readtable(...
+    "../data/raw/ZePSI-E-013012/ZePSI-E-013012-param.txt", "Range", "B1"));
 
 %% RABI NUTATIONS EXPERIMENT PULSE 1
 
@@ -101,10 +103,11 @@ end
 figure()
 plot(1:nMeas - 1, diff)
 
-xAmp = [78.00, 79.39, 79.79, 80.04, 80.23, 80.39, 80.53, 80.65, 80.76, ...
-    80.86, 80.96, 81.05, 81.15, 81.24, 81.34, 81.43, 81.53, 81.63, 81.74, ...
-    81.86, 82.00, 82.16, 82.35, 82.60, 83.00];
-xAmp = xAmp(1:nMeas);
+% xAmp = [78.00, 79.39, 79.79, 80.04, 80.23, 80.39, 80.53, 80.65, 80.76, ...
+%     80.86, 80.96, 81.05, 81.15, 81.24, 81.34, 81.43, 81.53, 81.63, 81.74, ...
+%     81.86, 82.00, 82.16, 82.35, 82.60, 83.00];
+
+
 
 figure(74)
 clf
@@ -127,7 +130,6 @@ for ii = 1:nMeas
     LoadEseem.Param{ii}.turningAngle = turningAngle(ii);
 end
 save(loadEseemPath, '-struct', 'LoadEseem')
-
 
 %% OVERLAY SIGMOIDAL FUNCTION
 
@@ -158,37 +160,4 @@ for ii = 1:numel(xgoal)
     fprintf(fileID, '%.2f\t', xgoal(ii));
 end
 fclose(fileID);
-%}
-
-%% FFT
-
-%{
-APPLY_WINDOW = 0;
-tStep = xrabi(2) - xrabi(1);
-fSampl = 1/tStep;
-nzf = 1024;  % Zero filling
-if APPLY_WINDOW
-    winrabii = winham.*rabii;  % Apply window function
-else
-    winrabii = rabii;
-end
-if nzf ~= 0
-    fxrabi = fSampl/nzf*(-nzf/2:nzf/2 - 1);  % Freq axis
-    frabii = zeros(nMeas, nzf);  % Initialize fft arrays
-    winrabii(:, nzf) = zeros(nMeas, 1);  % Zero filling
-else
-    fxrabi = fSampl/nTau*(-nTau/2:nTau/2 - 1);  % Freq axis
-    frabii = zeros(nMeas, nTau);  % Initialize fft arrays
-end
-
-figure()
-clf
-tiledlayout("flow", "TileSpacing", "compact", "Padding", "compact")
-for ii = 1:nMeas
-    frabii(ii, :) = fft(winrabii(ii, :));
-
-    nexttile
-    plot(fxrabi, abs(fftshift(frabii(ii, :))), 'o-')
-    xlim([-0.1, 0.1])
-end
 %}
