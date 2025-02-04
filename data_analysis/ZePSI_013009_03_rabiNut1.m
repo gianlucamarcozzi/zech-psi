@@ -111,36 +111,33 @@ for ii = 1:nMeas
 end
 % save(loadEseemPath, '-struct', 'LoadEseem')
 
-%% OVERLAY SIGMOIDAL FUNCTION
+%% FIT SIGMOIDAL FUNCTION
 
 sigfun = @(xx, p) p(1)./(1 + p(2)*exp(-p(3)*(xx - p(4)))) + p(5);
 xx = linspace(78, 83, 1000);
-yover = sigfun(xx, [0.04, 5, 1.7, 80.25, 0.003]);
+p0 = [5, 1.8, 80.5];
+fitmodel = @(p) sigfun(xAmp, [1, p, 0]);
+yover = sigfun(xx, [0.04, p0, 0]);
+
+% [pfit{ii}, ~, residual, ~, ~, ~, jacobian] = lsqnonlin(...
+%     @(p) ydata - mldividefun(fitmodel, ydata, p), p0, [], [], fitOpt);
+ydata = freq;
+[pfitsig, ~, residual, ~, ~, ~, jacobian] = lsqnonlin(...
+    @(p) ydata - mldividefun(fitmodel, ydata, p), p0, [], [], fitOpt);
+pcisig = nlparci(pfitsig, residual, 'jacobian', jacobian);
+[yfitsig, pfitsigA, pfitsig(end + 1)] = mldividefun(...
+    fitmodel, ydata, pfitsig);
+pfitsig = [pfitsigA, pfitsig];
 
 clf
-errorbar(xAmp, freq, pci(:, 2, 1) - freq', ...
+errorbar(xAmp, freq', pci(:, 2, 1) - freq', ...
     pci(:, 2, 2) - freq', 'o')
 hold on
-plot(xx, yover)
+% plot(xx, yover)
+plot(xAmp, yfitsig)
+plot(xx, sigfun(xx, pfitsig))
 
-ny = 25;
-ygoal = linspace(yover(1), yover(end), ny);
-ixgoal = zeros(ny, 1);
-for ii = 1:ny
-    [~, ixgoal(ii)] = min(abs(yover - ygoal(ii)));
-end
-xgoal = xx(ixgoal);
-
-plot(xgoal, yover(ixgoal), 'kx')
-
-% SAVE TO FILE
-%{
-fileID = fopen('output.txt', 'w');
-for ii = 1:numel(xgoal)
-    fprintf(fileID, '%.2f\t', xgoal(ii));
-end
-fclose(fileID);
-%}
+% save('../data/processed/ZePSI_013009_mpfuYch.mat', 'sigfun', 'pfitsig')
 
 %% FFT
 
