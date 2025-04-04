@@ -1,9 +1,9 @@
 clearvars
 
-loadFolder = "../data/processed/ZePSI_*mpfuYch.mat";
+loadFolder = "../data/processed/ZePSI_013022_mpfuXch.ma*";
 loadDir = dir(loadFolder);
 nData = numel(loadDir);
-xx = linspace(78, 83.5, 1000);
+xx = linspace(75, 87, 1000);
 
 for ii = 1:nData
     filepath = fullfile(loadDir(ii).folder, loadDir(ii).name);
@@ -36,11 +36,9 @@ plot(xgoal, ympfu(ixgoal), 'k', 'Marker', 'square', 'LineStyle', 'none')
 
 % SAVE TO FILE
 fileID = fopen('ZePSI_createEquiPulseAmpAxis.txt', 'w');
-fprintf(fileID, '[');
 for ii = 1:ny - 1
     fprintf(fileID, '%.3f, ', xgoal(ii));
 end
 fprintf(fileID, '%.3f', xgoal(end));
-fprintf(fileID, ']');
 fclose(fileID);
 

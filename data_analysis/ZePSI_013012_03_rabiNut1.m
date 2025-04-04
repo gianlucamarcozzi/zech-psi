@@ -30,11 +30,11 @@ for ii = 1:nMeas
     y2{ii} = integWindow{ii}.*y{ii};  % Signal in the window
 
     nexttile
-    sax = ScrollableAxes('Index', 1);
-    plot(sax, x{1}, x{2}, real(y{ii}));
+    % sax = ScrollableAxes('Index', 1);
+    % plot(sax, x{1}, x{2}, real(y{ii}));
     hold on
-    plot(sax, x{1}, x{2}, imag(y{ii}));
-    plot(sax, x{1}, x{2}, real(integWindow{ii})*0.2e4);
+    % plot(sax, x{1}, x{2}, imag(y{ii}));
+    % plot(sax, x{1}, x{2}, real(integWindow{ii})*0.2e4);
     ylim([-0.5e4, 0.5e4])
 end
 
@@ -48,11 +48,11 @@ for ii = 1:nMeas
     % rabii2(ii, :) = sum(y22{ii}(1:nTau, :), 2);
 
     nexttile
-    plot(xrabi, real(rabii(ii, :)), 'o-')
+    % plot(xrabi, real(rabii(ii, :)), 'o-')
     hold on
-    plot(xrabi, imag(rabii(ii, :)), 'o-')
-    plot(xrabi, winham*max(real(rabii(ii, :))))
-    plot(xrabi, winham.*real(rabii(ii, :)))
+    % plot(xrabi, imag(rabii(ii, :)), 'o-')
+    % plot(xrabi, winham*max(real(rabii(ii, :))))
+    % plot(xrabi, winham.*real(rabii(ii, :)))
 end
 
 %% FIT cosine

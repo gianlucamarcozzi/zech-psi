@@ -65,6 +65,7 @@ end
 
 ff = ff*1e3;  % MHz
 figure(3)
+clf
 % tiledlayout("flow", "TileSpacing", "compact", "Padding", "compact")
 for ii = 1:13
 

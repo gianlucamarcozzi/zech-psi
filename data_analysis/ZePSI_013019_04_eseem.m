@@ -3,36 +3,32 @@ addpath(genpath('util/'))
 
 %% IMPORT
 
-loadPath = '../data/processed/ZePSI-E-013012-ESEEM.mat';
+loadPath = '../data/processed/ZePSI-E-013019-ESEEM.mat';
 load(loadPath)
-
-bestPhase = [-0.04, -0.46, -0.80, 0.02, 0.03, 0.06, -0.02, 0.04, -0.10, ...
-    0.12, -0.02, -0.04, -0.06, -0.52, -0.07, -0.05, -0.02, -0.31, ...
-    -0.20, -0.37, -0.18, -0.28, -0.16, -0.23, -0.29, -0.27, -0.28, ...
-    -0.32, -0.36, -0.38, -0.40, -0.42, -0.43, -0.47, -0.48, -0.49, ...
-    -0.52, -0.54, -0.56, -0.55, -0.53, -0.54, -0.55, -0.56, -0.54, ...
-    -0.56, -0.56, -0.59, -0.56, -0.58, -0.56];
-bestPhase = rad2deg(bestPhase);
-xAmpPhase = 78:0.1:83;
+nMeas = numel(y);
+for ii = 1:nMeas
+    xAmp(ii) = Param{ii}.mpfuXAmp;
+end
 
 %% ESEEM INTEGRATION
 
 % Find and plot integration window
-integWidth = 50;
-iMax = 190;
-
+integWidth = 20;
+iMax = 200;
+DELTA_TAU = 8;  % ns
 nMeas = numel(y);
-nTau = 200;
 figure(40)
 clf
 tiledlayout("flow", "TileSpacing", "compact", "Padding", "compact")
 % for ii = nMeas - 3:nMeas
 for ii = 1:nMeas
     [integWindow{ii}, integWindowPlot{ii}] = deal(zeros(size(y{ii})));
+    nTau = size(y{ii}, 1);
     for itau = 1:nTau
         valMax = max(real(y{ii}(itau, :)));
-        iInteg = (iMax - integWidth/2 + itau*2 - 2):(iMax + integWidth/2 + ...
-            itau*2 - 2);
+        iInteg1 = iMax - integWidth/2 + (itau - 1)*DELTA_TAU;
+        iInteg2 = iMax + integWidth/2 + (itau - 1)*DELTA_TAU;
+        iInteg = iInteg1:iInteg2;
         integWindow{ii}(itau, iInteg) = ones(1, integWidth + 1);
         integWindowPlot{ii}(itau, iInteg) = ...
             valMax*integWindow{ii}(itau, iInteg);
@@ -54,68 +50,22 @@ for ii = 1:nMeas
     % fprintf("%d max at:\t%d\n", [ii, iMax])
 end
 
-%%
-shiftphase = @(y, p) y*exp(1i*p*pi/180);
-PHASE = -45;
-
-II = 25;
-% [~, iBestPhase] = min(abs(xAmpPhase - xAmp(ii)));
-figure(41)
-clf
-sax = ScrollableAxes('Index', 1);
-% ycorr = shiftphase(y{ii}, bestPhase(iBestPhase));
-ycorr = shiftphase(y{II}, PHASE);
-plot(sax, x{1}, x{2}, real(y{II}));
-hold on
-plot(sax, x{1}, x{2}, imag(y{II}));
-plot(sax, x{1}, x{2}, real(ycorr), 'b');
-plot(sax, x{1}, x{2}, imag(ycorr), 'r');
-
-ycorr2 = integWindow{II}.*ycorr;  % Signal in the window
-
-%% INTEGRATE TO GET ESEEM
-
+% INTEGRATE TO GET ESEEM
 eseem = zeros(nMeas, nTau);
-figure(22)
-clf
-tiledlayout("flow", "TileSpacing", "compact", "Padding", "compact")
-xeseem = 150 + (0:2:(nTau - 1)*2);
+xeseem = 120 + (0:8:(nTau - 1)*8);
 for ii = 1:nMeas
     eseem(ii, :) = sum(y2{ii}(1:nTau, :), 2);
-
-    nexttile
-    plot(xeseem(1:4:end), real(eseem(ii, 1:4:end)), 'o')
-    hold on
-    plot(xeseem(1:4:end), imag(eseem(ii, 1:4:end)), 'o')
-
-    % titleStr = sprintf("%.1f deg, %.2f MPFU", ...
-    %    Param{ii}.turningAngle/pi*180, xAmp(ii));
-    % title(titleStr)
 end
 
-% hold on
-% plot(xeseem, real(escorr), 'r')
-% plot(xeseem, imag(escorr), 'k')
-
-eseemcorr = sum(ycorr2(1:nTau, :), 2);
-
-figure(41)
-clf
-plot(xeseem(1:2:end), real(eseem(II, 1:2:end)))
-hold on
-plot(xeseem(1:2:end), imag(eseem(II, 1:2:end)))
-plot(xeseem(1:2:end), real(eseemcorr(1:2:end)));
-plot(xeseem(1:2:end), imag(eseemcorr(1:2:end)));
-
-%%
-I_MIN = [2, 30, 55, 75, 150];
-figure(23)
+%
+I_BEST = [3, 19];
+figure(24)
 clf
 cmap = viridis(nMeas);
 for ii = 1:nMeas
     % if ii > 11 && ii < 17
         % disp('Skipping some spectra')
-    if ii == 19
+    if false
         plot(xeseem, imag(eseem(ii, :)), 'x', 'Color', cmap(ii, :), ...
             'DisplayName', string(Param{ii}.turningAngle/pi*180))
     else
@@ -124,28 +74,33 @@ for ii = 1:nMeas
     end
     hold on
 end
-xline(xeseem(I_MIN))
+xline(xeseem(I_BEST))
 yline(0)
-plot(xeseem, imag(eseemcorr), 'Color', 'r', 'DisplayName', 'Corr')
+% plot(xeseem, imag(eseemcorr), 'Color', 'r', 'DisplayName', 'Corr')
 legend()
 
+%
 ybeta = zeros(1, nMeas);
 xbeta = zeros(1, nMeas);
 for ii = 1:nMeas
-    for jj = 1:numel(I_MIN)
-        ybeta(ii, jj) = imag(eseem(ii, I_MIN(jj)));
+    for jj = 1:numel(I_BEST)
+        ybeta(ii, jj) = imag(eseem(ii, I_BEST(jj)));
     end
     xbeta(ii) = Param{ii}.turningAngle;    
 end
 
 figure(33)
 clf
-for ii = 1:numel(I_MIN)
-    plot(xbeta*180/pi, ybeta(:, ii), 'o-', 'DisplayName', string(I_MIN(ii)))
+for ii = 1:numel(I_BEST)
+    plot(xbeta*180/pi, (-1)^ii*ybeta(:, ii)/max(abs(ybeta(:, ii))), 'o-', 'DisplayName', string(I_BEST(ii)))
     hold on
 end
+%plot(xbeta*180/pi, -2.5*ybeta(:, 2)/max(abs(ybeta(:, 1))))
 yline(0)
 legend()
+
+aa = load("/home/gianluca/files/projects/oop-ciss-calculations/data/digitized/zech_p46_oopEseem_expData.csv");
+plot(aa(:, 1), aa(:, 2)/max(abs(aa(:, 2))), 'x-')
 
 %% PLOTS
 %{
