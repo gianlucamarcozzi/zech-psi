@@ -46,9 +46,9 @@ for ii = 1:nMeas
     % rabii2(ii, :) = sum(y22{ii}(1:nTau, :), 2);
 
     nexttile
-    plot(xrabi, real(rabii(ii, :)), 'o-')
+    plot(xrabi, real(rabii(ii, :)), '-')
     hold on
-    plot(xrabi, imag(rabii(ii, :)), 'o-')
+    plot(xrabi, imag(rabii(ii, :)), '-')
     plot(xrabi, winham*max(real(rabii(ii, :))))
     plot(xrabi, winham.*real(rabii(ii, :)))
 end
